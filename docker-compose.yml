@@ -1,53 +1,41 @@
 version: "3.8"
 
 services:
+
   php-apache:
     image: thecodingmachine/php:8.1-v4-apache-node16
     restart: unless-stopped
 
-    expose:
-      - "80"
+    environment:
+      COMPOSER_ALLOW_SUPERUSER: "1"
+      PHP_INI_MEMORY_LIMIT: 1g
+      PHP_INI_ERROR_REPORTING: E_ALL
+      PHP_EXTENSIONS: pdo_mysql mbstring zip curl gd intl exif opcache
+      APACHE_DOCUMENT_ROOT: /var/www/html/src/public
 
     volumes:
       - ./:/var/www/html
 
+    expose:
+      - "80"
+
     depends_on:
       - mariadb
 
-    environment:
-      APACHE_DOCUMENT_ROOT: /var/www/html/public
-      COMPOSER_ALLOW_SUPERUSER: "1"
-      APACHE_EXTENSION_DAV: "0"
-      PHP_INI_MEMORY_LIMIT: "1g"
-      PHP_INI_ERROR_REPORTING: "E_ALL"
-      PHP_EXTENSIONS: "pgsql gettext imap sockets zip curl dom gd exif intl mbstring bcmath opcache soap xml xmlrpc fileinfo pdo_sqlite pdo_mysql pdo_pgsql"
-      PECL_EXTENSION: "sodium"
-
-    networks:
-      - coolify
-
 
   mariadb:
-    image: mariadb:10.3
+    image: mariadb:10.6
     restart: unless-stopped
 
     environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: microweber
       MYSQL_USER: microweber
-      MYSQL_PASSWORD: microweber
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: microweberpass
 
     volumes:
-      - mariadb_data:/var/lib/mysql
-
-    networks:
-      - coolify
+      - db_data:/var/lib/mysql
 
 
 volumes:
-  mariadb_data:
-
-
-networks:
-  coolify:
-    external: true
+  db_data:
