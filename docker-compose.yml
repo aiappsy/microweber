@@ -15,6 +15,7 @@ services:
       - mariadb
 
     environment:
+      APACHE_DOCUMENT_ROOT: /var/www/html/public
       COMPOSER_ALLOW_SUPERUSER: "1"
       APACHE_EXTENSION_DAV: "0"
       PHP_INI_MEMORY_LIMIT: "1g"
