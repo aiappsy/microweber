@@ -2,31 +2,23 @@ version: "3.8"
 
 services:
   php-apache:
-    image: webdevops/php-apache:8.1
+    image: thecodingmachine/php:8.1-v4-apache
     restart: unless-stopped
 
-    # Coolify will route to this service on port 80 internally.
     expose:
       - "80"
 
     environment:
-      # IMPORTANT: serve the real webroot
-      WEB_DOCUMENT_ROOT: /app/src/public
-
-      # Optional but helpful
+      APACHE_DOCUMENT_ROOT: /app/src/public
       PHP_MEMORY_LIMIT: 1024M
-      PHP_MAX_EXECUTION_TIME: 300
 
-      # If your Microweber .env uses DB_* variables, these help
       DB_HOST: mariadb
-      DB_PORT: 3306
       DB_DATABASE: microweber
       DB_USERNAME: microweber
       DB_PASSWORD: microweber_pass
 
     volumes:
-      # Mount repo into /app (NOT /var/www/html)
-      - ./:/app:rw
+      - ./:/app
 
     depends_on:
       - mariadb
@@ -44,6 +36,7 @@ services:
 
     volumes:
       - mariadb_data:/var/lib/mysql
+
 
 volumes:
   mariadb_data:
