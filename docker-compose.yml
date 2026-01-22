@@ -1,22 +1,15 @@
-version: "3"
+version: "3.8"
 
 services:
   php-apache:
     image: thecodingmachine/php:8.1-v4-apache-node16
     restart: unless-stopped
-
-    # IMPORTANT:
-    # Do NOT bind host port 80 in Coolify (it is already taken by the proxy).
-    # Coolify will route to this service internally.
     expose:
       - "80"
-
     volumes:
       - ./:/var/www/html
-
     depends_on:
       - mariadb
-
     environment:
       COMPOSER_ALLOW_SUPERUSER: "1"
       APACHE_EXTENSION_DAV: "0"
@@ -25,6 +18,8 @@ services:
       PHP_EXTENSIONS: "pgsql gettext imap sockets zip curl dom gd exif intl mbstring bcmath opcache soap xml xmlrpc fileinfo pdo_sqlite pdo_mysql pdo_pgsql"
       PECL_EXTENSION: "sodium"
       STARTUP_COMMAND_1: "composer install"
+    networks:
+      - coolify
 
   mariadb:
     image: mariadb:10.3
@@ -36,6 +31,12 @@ services:
       MYSQL_ROOT_PASSWORD: "root"
     volumes:
       - mariadb_data:/var/lib/mysql
+    networks:
+      - coolify
 
 volumes:
   mariadb_data:
+
+networks:
+  coolify:
+    external: true
