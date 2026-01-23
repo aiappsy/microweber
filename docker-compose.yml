@@ -9,29 +9,27 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-
     environment:
-      # IMPORTANT: Microweber/Laravel entrypoint lives here
+      # IMPORTANT: this repo has /public at ROOT (not /src/public)
       APACHE_DOCUMENT_ROOT: /var/www/html/public
 
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
 
-      # Database (Microweber uses these Laravel-style keys)
-      DB_HOST: mariadb
+      APP_ENV: "production"
+      APP_DEBUG: "false"
+      APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
+
+      DB_CONNECTION: "mysql"
+      DB_HOST: "mariadb"
       DB_PORT: "3306"
       DB_DATABASE: "${MYSQL_DATABASE:-microweber}"
       DB_USERNAME: "${MYSQL_USER:-microweber}"
       DB_PASSWORD: "${MYSQL_PASSWORD:-microweber_pass}"
 
-      # Optional, but nice to have in app config
-      APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
-      APP_ENV: "production"
-      APP_DEBUG: "false"
-
     volumes:
-      # Coolify git checkout
+      # Mount the WHOLE repo (so /public exists)
       - ./:/var/www/html:rw
 
       # Persist writable dirs across deploys
@@ -43,25 +41,32 @@ services:
       set -e;
       cd /var/www/html;
 
-      # Ensure expected writable dirs exist (Microweber/Laravel)
-      mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache userfiles;
+      # Create a minimal Laravel .env if missing (Microweber installer can extend it later)
+      if [ ! -f .env ]; then
+        cat > .env << 'EOF'
+APP_NAME=Microweber
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=${APP_URL}
 
-      # Install deps only if needed
-      if [ -f composer.json ] && [ ! -d vendor ]; then
-        composer install --no-interaction --prefer-dist --optimize-autoloader;
+DB_CONNECTION=mysql
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_DATABASE=${DB_DATABASE}
+DB_USERNAME=${DB_USERNAME}
+DB_PASSWORD=${DB_PASSWORD}
+EOF
       fi
 
-      # Create .env if missing
-      if [ ! -f .env ] && [ -f .env.example ]; then
-        cp .env.example .env;
-      fi
+      composer install --no-interaction --prefer-dist --optimize-autoloader;
 
-      # Laravel key (safe to run; will no-op if not applicable)
       php artisan key:generate --force || true;
+      php artisan storage:link || true;
 
-      # Permissions
-      chown -R www-data:www-data storage bootstrap/cache userfiles || true;
-      chmod -R 775 storage bootstrap/cache userfiles || true;
+      mkdir -p storage userfiles bootstrap/cache;
+      chown -R www-data:www-data storage userfiles bootstrap/cache || true;
+      chmod -R 775 storage userfiles bootstrap/cache || true;
 
       apache2-foreground
       "
