@@ -11,7 +11,7 @@ services:
         condition: service_healthy
 
     environment:
-      APACHE_DOCUMENT_ROOT: /var/www/html/public
+      APACHE_DOCUMENT_ROOT: /var/www/html/src/public
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
