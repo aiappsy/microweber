@@ -9,27 +9,32 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+
     environment:
-      # IMPORTANT: this repo has /public at ROOT (not /src/public)
+      # Serve Microweber/Laravel from /public
       APACHE_DOCUMENT_ROOT: /var/www/html/public
 
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
 
-      APP_ENV: "production"
-      APP_DEBUG: "false"
-      APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
+      # (Optional) common extensions; harmless if some already enabled in the image
+      PHP_EXTENSIONS: "pdo_mysql mysqli gd intl mbstring zip curl dom exif fileinfo soap xml bcmath opcache"
 
-      DB_CONNECTION: "mysql"
-      DB_HOST: "mariadb"
+      # DB (defaults work even when Coolify injects empty vars)
+      DB_HOST: mariadb
       DB_PORT: "3306"
       DB_DATABASE: "${MYSQL_DATABASE:-microweber}"
       DB_USERNAME: "${MYSQL_USER:-microweber}"
       DB_PASSWORD: "${MYSQL_PASSWORD:-microweber_pass}"
 
+      # App URL (Coolify sets SERVICE_URL_PHP_APACHE)
+      APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
+      APP_ENV: "production"
+      APP_DEBUG: "false"
+
     volumes:
-      # Mount the WHOLE repo (so /public exists)
+      # Mount the entire repo
       - ./:/var/www/html:rw
 
       # Persist writable dirs across deploys
@@ -41,29 +46,15 @@ services:
       set -e;
       cd /var/www/html;
 
-      # Create a minimal Laravel .env if missing (Microweber installer can extend it later)
-      if [ ! -f .env ]; then
-        cat > .env << 'EOF'
-APP_NAME=Microweber
-APP_ENV=production
-APP_KEY=
-APP_DEBUG=false
-APP_URL=${APP_URL}
+      # Ensure env exists (Microweber/Laravel style)
+      if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi;
 
-DB_CONNECTION=mysql
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_DATABASE=${DB_DATABASE}
-DB_USERNAME=${DB_USERNAME}
-DB_PASSWORD=${DB_PASSWORD}
-EOF
+      # Install PHP deps if project has composer.json
+      if [ -f composer.json ]; then
+        composer install --no-interaction --prefer-dist --optimize-autoloader;
       fi
 
-      composer install --no-interaction --prefer-dist --optimize-autoloader;
-
-      php artisan key:generate --force || true;
-      php artisan storage:link || true;
-
+      # Ensure writable dirs exist and perms are ok
       mkdir -p storage userfiles bootstrap/cache;
       chown -R www-data:www-data storage userfiles bootstrap/cache || true;
       chmod -R 775 storage userfiles bootstrap/cache || true;
