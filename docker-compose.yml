@@ -9,9 +9,7 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-
     environment:
-      APACHE_DOCUMENT_ROOT: /var/www/html/src/public
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
@@ -29,9 +27,14 @@ services:
       - microweber_storage:/var/www/html/storage
       - microweber_userfiles:/var/www/html/userfiles
 
+      # force apache to use our docroot + allow access
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
+
     command: >
       bash -lc "
       set -e;
+      a2enmod rewrite >/dev/null 2>&1 || true;
+
       cd /var/www/html;
 
       if [ -f composer.json ]; then
@@ -39,7 +42,6 @@ services:
       fi
 
       mkdir -p /var/www/html/storage /var/www/html/userfiles;
-
       chown -R www-data:www-data /var/www/html/storage /var/www/html/userfiles || true;
       chmod -R 775 /var/www/html/storage /var/www/html/userfiles || true;
 
