@@ -1,41 +1,36 @@
-version: "3.8"
+version: "3.9"
 
 services:
   php-apache:
     image: thecodingmachine/php:8.2-v4-apache-node18
     restart: unless-stopped
-    user: root
+    expose:
+      - "80"
     depends_on:
-      - mariadb
-
+      mariadb:
+        condition: service_healthy
     environment:
-      # Apache must serve /public (Laravel)
-      APACHE_DOCUMENT_ROOT: /var/www/html/public
+      APACHE_DOCUMENT_ROOT: /var/www/html
 
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
 
-      # Extensions Microweber typically needs
-      PHP_EXTENSIONS: "pdo_mysql mysqli gd intl mbstring zip curl dom exif fileinfo soap xml xmlrpc bcmath opcache"
-
-      # App config
-      APP_ENV: "production"
-      APP_DEBUG: "false"
-      APP_URL: "${SERVICE_URL_PHP_APACHE}"
-
-      DB_CONNECTION: "mysql"
-      DB_HOST: "mariadb"
+      # DB
+      DB_HOST: mariadb
       DB_PORT: "3306"
-      DB_DATABASE: "${MYSQL_DATABASE}"
-      DB_USERNAME: "${MYSQL_USER}"
-      DB_PASSWORD: "${MYSQL_PASSWORD}"
+      DB_DATABASE: "${MYSQL_DATABASE:-microweber}"
+      DB_USERNAME: "${MYSQL_USER:-microweber}"
+      DB_PASSWORD: "${MYSQL_PASSWORD:-microweber_pass}"
+
+      # Optional (if your app uses it)
+      APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
 
     volumes:
-      # Your repo into the container
+      # your repo (Coolify git checkout)
       - ./:/var/www/html:rw
 
-      # Persist these across deploys
+      # persistent writable dirs (DON'T bind-mount these)
       - microweber_storage:/var/www/html/storage
       - microweber_userfiles:/var/www/html/userfiles
 
@@ -44,15 +39,14 @@ services:
       set -e;
       cd /var/www/html;
 
-      if [ ! -f .env ]; then cp .env.example .env || true; fi;
+      if [ -f composer.json ]; then
+        composer install --no-interaction --prefer-dist --optimize-autoloader;
+      fi
 
-      composer install --no-interaction --prefer-dist --optimize-autoloader;
+      mkdir -p /var/www/html/storage /var/www/html/userfiles;
 
-      php artisan key:generate --force || true;
-      php artisan storage:link || true;
-
-      chown -R www-data:www-data storage bootstrap/cache userfiles || true;
-      chmod -R 775 storage bootstrap/cache userfiles || true;
+      chown -R www-data:www-data /var/www/html/storage /var/www/html/userfiles || true;
+      chmod -R 775 /var/www/html/storage /var/www/html/userfiles || true;
 
       apache2-foreground
       "
@@ -61,14 +55,19 @@ services:
     image: mariadb:10.6
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: "${MYSQL_DATABASE}"
-      MYSQL_USER: "${MYSQL_USER}"
-      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-microweber_root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-microweber}"
+      MYSQL_USER: "${MYSQL_USER:-microweber}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-microweber_pass}"
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - mw-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
 
 volumes:
-  mariadb_data:
+  mw-db:
   microweber_storage:
   microweber_userfiles:
