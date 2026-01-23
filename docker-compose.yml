@@ -11,7 +11,7 @@ services:
         condition: service_healthy
 
     environment:
-      APACHE_DOCUMENT_ROOT: /var/www/html
+      APACHE_DOCUMENT_ROOT: /var/www/html/public
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
       PHP_INI_ERROR_REPORTING: "E_ALL"
@@ -25,10 +25,7 @@ services:
       APP_URL: "${SERVICE_URL_PHP_APACHE:-http://localhost}"
 
     volumes:
-      # IMPORTANT: serve the actual app directory (not the repo root)
-      - ./src:/var/www/html:rw
-
-      # persistent writable dirs
+      - ./:/var/www/html:rw
       - microweber_storage:/var/www/html/storage
       - microweber_userfiles:/var/www/html/userfiles
 
