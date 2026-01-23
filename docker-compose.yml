@@ -10,7 +10,8 @@ services:
       mariadb:
         condition: service_healthy
     environment:
-      APACHE_DOCUMENT_ROOT: /var/www/html
+      # IMPORTANT: serve the actual web root (fixes Apache "Forbidden")
+      APACHE_DOCUMENT_ROOT: /var/www/html/public
 
       COMPOSER_ALLOW_SUPERUSER: "1"
       PHP_INI_MEMORY_LIMIT: "1024M"
@@ -30,7 +31,7 @@ services:
       # your repo (Coolify git checkout)
       - ./:/var/www/html:rw
 
-      # persistent writable dirs (DON'T bind-mount these)
+      # persistent writable dirs
       - microweber_storage:/var/www/html/storage
       - microweber_userfiles:/var/www/html/userfiles
 
